@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/playListFragment">
+
+    <fragment
+        android:id="@+id/playListFragment"
+        android:name="ai.bale.musicplayer.fragments.PlayListFragment"
+        android:label="Home">
+        <action
+            android:id="@+id/action_playListFragment_to_playerFragment"
+            app:destination="@id/playerFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/playerFragment"
+        android:name="ai.bale.musicplayer.fragments.PlayerFragment"
+        android:label="Play" >
+        <action
+            android:id="@+id/action_playerFragment_to_playListFragment"
+            app:destination="@id/playListFragment" />
+    </fragment>
+</navigation>
