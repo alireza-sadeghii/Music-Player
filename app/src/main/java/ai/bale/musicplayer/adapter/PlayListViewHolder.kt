@@ -3,50 +3,88 @@ package ai.bale.musicplayer.adapter
 import ai.bale.musicplayer.R
 import ai.bale.musicplayer.databinding.ListItemBinding
 import ai.bale.musicplayer.models.Music
-import android.graphics.BitmapFactory
+import ai.bale.musicplayer.services.PlayerProvider
+import ai.bale.musicplayer.services.PlayerService
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.IBinder
 import android.util.Log
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.MediaMetadata
 import java.io.IOException
 import java.lang.Exception
 import kotlin.math.roundToInt
 
-class PlayListViewHolder(private val binding: ListItemBinding): RecyclerView.ViewHolder(binding.root) {
-    fun bind(music: Music){
+class PlayListViewHolder(private val binding: ListItemBinding, private val musics: List<Music>) :
+    RecyclerView.ViewHolder(binding.root) {
+    private lateinit var player: ExoPlayer
+    fun bind(music: Music) {
+        player = PlayerProvider.Player
         binding.musicTitle.text = music.title
         binding.musicSinger.text = music.singer
         binding.musicDuration.text = calculateDuration(music.duration.toInt())
-        if (music.coverUri != null) {
-            val contentResolver = binding.root.context.contentResolver
-            try {
-                val inputStream = contentResolver.openInputStream(music.coverUri)
-                if (inputStream != null) {
-                    val options = BitmapFactory.Options()
-                    options.inJustDecodeBounds = true
-                    BitmapFactory.decodeStream(inputStream, null, options)
-                    inputStream.close()
-                    if (options.outWidth > 0 && options.outHeight > 0) {
-                        binding.musicCoverImage.setImageURI(music.coverUri)
-                    }
-                }
-            } catch (e: IOException) {
-                e.printStackTrace()
+
+        try {
+            binding.musicCoverImage.setImageURI(music.coverUri)
+
+            if (binding.musicCoverImage.drawable == null) {
+                binding.musicCoverImage.setImageResource(R.drawable.cover_music)
             }
+        } catch (e: IOException) {
+            e.printStackTrace()
         }
 
         binding.root.setOnClickListener {
-            Log.v("checking",music.title)
             try {
+                binding.root.context.startService(
+                    Intent(
+                        binding.root.context.applicationContext,
+                        PlayerService::class.java
+                    )
+                )
                 val navController = binding.root.findNavController()
-                val navGraph = navController.graph
-                val actionId = R.id.action_playListFragment_to_playerFragment
-                val action = navGraph.getAction(actionId)
+                navController.navigate(R.id.action_playListFragment_to_playerFragment)
 
-                navController.navigate(actionId)
-            }catch (e:Exception){
+                if (!player.isPlaying) {
+                    player.setMediaItems(getPlayerMedia(), position, 0)
+                } else {
+                    player.pause()
+                    player.seekTo(position, 0)
+                }
+                player.prepare()
+                player.play()
+
+            } catch (e: Exception) {
                 Log.v("checking", e.message.toString())
             }
         }
+    }
+
+
+    private fun getPlayerMedia(): List<MediaItem> {
+        val mediaItems = mutableListOf<MediaItem>()
+
+        for (song in musics) {
+            val newMedia = MediaItem.Builder()
+                .setUri(song.uri)
+                .setMediaMetadata(getSongData(song))
+                .build()
+            mediaItems.add(newMedia)
+        }
+
+        return mediaItems
+    }
+
+    private fun getSongData(song: Music): MediaMetadata {
+        return MediaMetadata.Builder()
+            .setTitle(song.title)
+            .setArtworkUri(song.coverUri)
+            .build()
     }
 
     private fun calculateDuration(duration: Int): String {
