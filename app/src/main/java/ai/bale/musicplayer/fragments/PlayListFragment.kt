@@ -1,5 +1,6 @@
 package ai.bale.musicplayer.fragments
 
+import ai.bale.musicplayer.R
 import ai.bale.musicplayer.adapter.PlayListAdapter
 import ai.bale.musicplayer.databinding.PlaylistFragmentBinding
 import ai.bale.musicplayer.models.Music
@@ -18,6 +19,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.provider.MediaStore
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -25,9 +27,12 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.navigation.findNavController
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.MediaItem
 import java.lang.Exception
 
 class PlayListFragment : Fragment() {
@@ -52,15 +57,18 @@ class PlayListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         player = PlayerProvider.Player
+
         setService()
         getLocalMusics()
         adapter = PlayListAdapter(musicList)
         recyclerView = binding.playlistRecyclerView
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         recyclerView.adapter = adapter
+
+        prepareMiniPlayer()
     }
 
-    private fun setService(){
+    private fun setService() {
         serviceConnection = object : ServiceConnection {
             override fun onServiceConnected(p0: ComponentName?, p1: IBinder?) {
                 val binder = p1 as PlayerService.ServiceBinder
@@ -74,11 +82,60 @@ class PlayListFragment : Fragment() {
         requireContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
     }
 
+    private fun prepareMiniPlayer() {
+        binding.pointerNextButton.setOnClickListener {
+            player.seekToNext()
+            updateMiniTitle()
+        }
+        binding.pointerPrevButton.setOnClickListener {
+            player.seekToPrevious()
+            updateMiniTitle()
+        }
+        binding.pointerPlayButton.setOnClickListener {
+            if (player.isPlaying) {
+                player.pause()
+            } else {
+                player.play()
+            }
+            updateMiniButtons()
+        }
+
+        updateMiniTitle()
+        updateMiniButtons()
+
+        binding.pointerTitle.setOnClickListener {
+            findNavController().navigate(R.id.action_playListFragment_to_playerFragment)
+        }
+    }
+
+    private fun updateMiniTitle() {
+        val currentMedia = player.currentMediaItem ?: PlayerProvider.lastPlayed ?: return
+        binding.pointerTitle.text = currentMedia.mediaMetadata.title
+    }
+
+    private fun updateMiniButtons(){
+        if (player.isPlaying){
+            val newDrawable = resources.getDrawable(R.drawable.pause_icon)
+            binding.pointerPlayButton.setCompoundDrawablesWithIntrinsicBounds(newDrawable, null, null, null)
+        }else{
+            val newDrawable = resources.getDrawable(R.drawable.play_icon)
+            binding.pointerPlayButton.setCompoundDrawablesWithIntrinsicBounds(newDrawable, null, null, null)
+        }
+    }
+
+    private fun getPlayerMedia(): List<MediaItem> {
+        val mediaItems = mutableListOf<MediaItem>()
+
+        player.currentMediaItem?.let { mediaItems.add(it) }
+
+        return mediaItems
+    }
+
     private fun fetchSongs() {
         musicList.clear()
         var queryUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             queryUri = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
         }
 
@@ -121,7 +178,8 @@ class PlayListFragment : Fragment() {
                     albumId
                 )
 
-                val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
+                val uri =
+                    ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
 
                 val music = Music(title, uri, artist, duration, albumArtworkUri, data)
                 musicList.add(music)
@@ -139,18 +197,18 @@ class PlayListFragment : Fragment() {
             fetchSongs()
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
-                AlertDialog.Builder(context)
-                    .setTitle("Requesting Music Permission")
-                    .setMessage("Allow Program to fetch songs on your device")
-                    .setPositiveButton("allow") { _, _ -> storagePerm.launch(permission) }
-                    .setNegativeButton("Cancel") { d, _ ->
-                        Toast.makeText(context, "Permission denied by user", Toast.LENGTH_SHORT)
-                            .show()
-                        d.dismiss()
-                    }
-                    .show()
+            AlertDialog.Builder(context)
+                .setTitle("Requesting Music Permission")
+                .setMessage("Allow Program to fetch songs on your device")
+                .setPositiveButton("allow") { _, _ -> storagePerm.launch(permission) }
+                .setNegativeButton("Cancel") { d, _ ->
+                    Toast.makeText(context, "Permission denied by user", Toast.LENGTH_SHORT)
+                        .show()
+                    d.dismiss()
+                }
+                .show()
 
-        } else{
+        } else {
             Toast.makeText(context, "You canceled to show songs", Toast.LENGTH_SHORT).show()
         }
     }
@@ -170,5 +228,6 @@ class PlayListFragment : Fragment() {
     override fun onDestroy() {
         super.onDestroy()
         requireContext().unbindService(serviceConnection)
+        PlayerProvider.lastPlayed = player.currentMediaItem
     }
 }

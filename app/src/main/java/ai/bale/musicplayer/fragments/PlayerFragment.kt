@@ -2,6 +2,7 @@ package ai.bale.musicplayer.fragments
 
 import ai.bale.musicplayer.R
 import ai.bale.musicplayer.databinding.PlayerFragmentBinding
+import ai.bale.musicplayer.databinding.PlaylistFragmentBinding
 import ai.bale.musicplayer.services.PlayerProvider
 import ai.bale.musicplayer.services.PlayerService
 import android.content.ComponentName
@@ -28,6 +29,7 @@ import androidx.navigation.fragment.navArgs
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
+import java.lang.Exception
 
 class PlayerFragment : Fragment() {
     private lateinit var binding: PlayerFragmentBinding
@@ -54,6 +56,7 @@ class PlayerFragment : Fragment() {
                 super.onMediaItemTransition(mediaItem, reason)
                 if (mediaItem == null) return
                 binding.playerMusicTitle.text = mediaItem.mediaMetadata.title
+
                 binding.playerProgressBar.progress = player.currentPosition.toInt()
                 binding.playerProgressBar.max = player.duration.toInt()
                 binding.playerMusicSinger.text = mediaItem.mediaMetadata.albumArtist
@@ -63,21 +66,21 @@ class PlayerFragment : Fragment() {
                     binding.playerMusicCover.setImageResource(R.drawable.cover_music)
                     ContextCompat.getDrawable(binding.root.context, R.drawable.cover_music)
                         ?.let { updateBackgroundDrawable(it) }
-                }else{
+                } else {
                     mediaItem.mediaMetadata.artworkUri?.let { updateBackgroundUri(it) }
                 }
 
                 binding.playerPlayButton.setImageResource(R.drawable.pause_icon)
                 updateMediaProgress()
 
-                if (!player.isPlaying){
+                if (!player.isPlaying) {
                     player.play()
                 }
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 super.onPlaybackStateChanged(playbackState)
-                if (playbackState == ExoPlayer.STATE_READY){
+                if (playbackState == ExoPlayer.STATE_READY) {
                     val currentMedia = player.currentMediaItem ?: return
                     binding.playerMusicTitle.text = currentMedia.mediaMetadata.title
                     binding.playerProgressBar.progress = player.currentPosition.toInt()
@@ -90,13 +93,13 @@ class PlayerFragment : Fragment() {
                         binding.playerMusicCover.setImageResource(R.drawable.cover_music)
                         ContextCompat.getDrawable(binding.root.context, R.drawable.cover_music)
                             ?.let { updateBackgroundDrawable(it) }
-                    }else{
+                    } else {
                         currentMedia.mediaMetadata.artworkUri?.let { updateBackgroundUri(it) }
                     }
 
 
                     updateMediaProgress()
-                }else{
+                } else {
                     binding.playerPlayButton.setImageResource(R.drawable.play_icon)
                 }
             }
@@ -114,6 +117,32 @@ class PlayerFragment : Fragment() {
         binding.playerMusicTitle.isFocusable = true
         binding.playerMusicTitle.isFocusableInTouchMode = true
         binding.playerMusicTitle.requestFocus()
+
+        updateForMiniPlayer()
+    }
+
+    private fun updateForMiniPlayer(){
+        val currentMedia = player.currentMediaItem ?: return
+        binding.playerMusicTitle.text = currentMedia.mediaMetadata.title
+        binding.playerProgressBar.progress = player.currentPosition.toInt()
+        binding.playerProgressBar.max = player.duration.toInt()
+        binding.playerMusicSinger.text = currentMedia.mediaMetadata.artist ?: "Artist"
+        binding.playerPlayButton.setImageResource(R.drawable.pause_icon)
+
+        binding.playerMusicCover.setImageURI(currentMedia.mediaMetadata.artworkUri)
+        if (binding.playerMusicCover.drawable == null) {
+            binding.playerMusicCover.setImageResource(R.drawable.cover_music)
+            ContextCompat.getDrawable(binding.root.context, R.drawable.cover_music)
+                ?.let { updateBackgroundDrawable(it) }
+        } else {
+            currentMedia.mediaMetadata.artworkUri?.let { updateBackgroundUri(it) }
+        }
+
+        binding.playerProgressBar.progress = player.currentPosition.toInt()
+
+        if (!player.isPlaying){
+            binding.playerPlayButton.setImageResource(R.drawable.play_icon)
+        }
     }
 
     private fun updateMediaProgress() {
@@ -125,7 +154,7 @@ class PlayerFragment : Fragment() {
         }, 1000)
     }
 
-    private fun updateBackgroundUri(uri: Uri){
+    private fun updateBackgroundUri(uri: Uri) {
         val inputStream = binding.root.context.contentResolver.openInputStream(uri)
         val imageDrawable = Drawable.createFromStream(inputStream, uri.toString())
         val semiTransparentShape = ShapeDrawable(RectShape())
@@ -145,20 +174,20 @@ class PlayerFragment : Fragment() {
         binding.playerMainFrameLayout.background = layerDrawable
     }
 
-    private fun skipNext(){
-        if (player.hasNextMediaItem()){
+    private fun skipNext() {
+        if (player.hasNextMediaItem()) {
             player.seekToNext()
         }
     }
 
-    private fun skipPrevious(){
-        if (player.hasPreviousMediaItem()){
+    private fun skipPrevious() {
+        if (player.hasPreviousMediaItem()) {
             player.seekToPrevious()
         }
     }
 
-    private fun playOrPause(){
-        if (player.isPlaying){
+    private fun playOrPause() {
+        if (player.isPlaying) {
             player.pause()
             binding.playerPlayButton.setImageResource(R.drawable.play_icon)
             return
@@ -195,6 +224,16 @@ class PlayerFragment : Fragment() {
                 }
             }
         })
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+
+        PlayerProvider.Player = player
+
+        outState.putLong("currentPosition", player.currentPosition)
+        outState.putBoolean("isPlaying", player.isPlaying)
+
     }
 
 }
