@@ -4,20 +4,25 @@ import ai.bale.musicplayer.adapter.PlayListAdapter
 import ai.bale.musicplayer.databinding.PlaylistFragmentBinding
 import ai.bale.musicplayer.models.Music
 import ai.bale.musicplayer.services.PlayerProvider
+import ai.bale.musicplayer.services.PlayerService
 import android.app.AlertDialog
+import android.app.NotificationManager
+import android.content.ComponentName
 import android.content.ContentUris
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.IBinder
 import android.provider.MediaStore
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -33,6 +38,7 @@ class PlayListFragment : Fragment() {
     private lateinit var storagePerm: ActivityResultLauncher<String>
     private val musicList = mutableListOf<Music>()
     private lateinit var player: ExoPlayer
+    private lateinit var serviceConnection: ServiceConnection
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -46,6 +52,7 @@ class PlayListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         player = PlayerProvider.Player
+        setService()
         getLocalMusics()
         adapter = PlayListAdapter(musicList)
         recyclerView = binding.playlistRecyclerView
@@ -53,7 +60,22 @@ class PlayListFragment : Fragment() {
         recyclerView.adapter = adapter
     }
 
+    private fun setService(){
+        serviceConnection = object : ServiceConnection {
+            override fun onServiceConnected(p0: ComponentName?, p1: IBinder?) {
+                val binder = p1 as PlayerService.ServiceBinder
+                PlayerProvider.Player = binder.getPlayerService().player
+            }
+
+            override fun onServiceDisconnected(p0: ComponentName?) {}
+        }
+
+        val intent = Intent(requireContext(), PlayerService::class.java)
+        requireContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+    }
+
     private fun fetchSongs() {
+        musicList.clear()
         var queryUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
@@ -143,5 +165,10 @@ class PlayListFragment : Fragment() {
         }
         storagePerm.launch(permission)*/
         fetchSongs()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        requireContext().unbindService(serviceConnection)
     }
 }
