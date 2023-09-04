@@ -2,6 +2,7 @@ package ai.bale.musicplayer.services
 
 import ai.bale.musicplayer.MainActivity
 import ai.bale.musicplayer.R
+import ai.bale.musicplayer.fragments.PlayListFragment
 import ai.bale.musicplayer.fragments.PlayerFragment
 import android.app.Notification
 import android.app.PendingIntent
@@ -25,40 +26,50 @@ import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import com.google.android.exoplayer2.util.NotificationUtil.IMPORTANCE_HIGH
 
 class PlayerService : Service() {
-    class ServiceBinder: Binder() {
-        public fun getPlayerService(): PlayerService{
-            return PlayerService()
+    private val serviceBinder: ServiceBinder = ServiceBinder()
+
+    inner class ServiceBinder : Binder() {
+        fun getPlayerService(): PlayerService {
+            return this@PlayerService
         }
     }
 
     lateinit var player: ExoPlayer
     private lateinit var notificationManager: PlayerNotificationManager
-    private val serviceBinder: ServiceBinder = ServiceBinder()
+    private val appTitle = "Music Player"
+    private val notificationId = 1234;
 
-    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    override fun onCreate() {
-        super.onCreate()
-        player = ExoPlayer.Builder(this).build()
+    private val listener: PlayerNotificationManager.NotificationListener =
+        object : PlayerNotificationManager.NotificationListener {
+            override fun onNotificationCancelled(notificationId: Int, dismissedByUser: Boolean) {
+                super.onNotificationCancelled(notificationId, dismissedByUser)
+                stopForeground(true)
+                if (player.isPlaying) {
+                    player.pause()
+                }
+            }
 
-        val audioAttributes = AudioAttributes.Builder()
-            .setUsage(C.USAGE_MEDIA)
-            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-            .build()
+            override fun onNotificationPosted(
+                notificationId: Int,
+                notification: Notification,
+                ongoing: Boolean
+            ) {
+                super.onNotificationPosted(notificationId, notification, ongoing)
+                startForeground(notificationId, notification)
+            }
+        }
 
-        player.setAudioAttributes(audioAttributes, true)
-        val appTitle = "Music Player"
-        val notificationId = 11111111;
-
-        // description adapter
-        val adapter: PlayerNotificationManager.MediaDescriptionAdapter = object : PlayerNotificationManager.MediaDescriptionAdapter{
+    private val adapter: PlayerNotificationManager.MediaDescriptionAdapter =
+        object : PlayerNotificationManager.MediaDescriptionAdapter {
             override fun getCurrentContentTitle(player: Player): CharSequence {
                 return player.currentMediaItem?.mediaMetadata?.title ?: "Music Title"
             }
 
             override fun createCurrentContentIntent(player: Player): PendingIntent? {
                 val playerIntent = Intent(applicationContext, MainActivity::class.java)
+                playerIntent.putExtra("openPlayerFragment",true)
                 val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-                return PendingIntent.getActivity(applicationContext,0, playerIntent, flags)
+                return PendingIntent.getActivity(applicationContext, 0, playerIntent, flags)
             }
 
             override fun getCurrentContentText(player: Player): CharSequence? {
@@ -79,26 +90,17 @@ class PlayerService : Service() {
             }
         }
 
+    override fun onCreate() {
+        super.onCreate()
 
-        // notification manager
-        val listener: PlayerNotificationManager.NotificationListener = object : PlayerNotificationManager.NotificationListener{
-            override fun onNotificationCancelled(notificationId: Int, dismissedByUser: Boolean) {
-                super.onNotificationCancelled(notificationId, dismissedByUser)
-                stopForeground(true)
-                if (player.isPlaying){
-                    player.pause()
-                }
-            }
+        player = PlayerProvider.Player
 
-            override fun onNotificationPosted(
-                notificationId: Int,
-                notification: Notification,
-                ongoing: Boolean
-            ) {
-                super.onNotificationPosted(notificationId, notification, ongoing)
-                startForeground(notificationId, notification)
-            }
-        }
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+            .build()
+
+        player.setAudioAttributes(audioAttributes, true)
 
         notificationManager = PlayerNotificationManager
             .Builder(this, notificationId, appTitle).setChannelImportance(IMPORTANCE_HIGH)
@@ -127,7 +129,7 @@ class PlayerService : Service() {
 
 
     override fun onDestroy() {
-        if (player.isPlaying){
+        if (player.isPlaying) {
             player.stop()
         }
         notificationManager.setPlayer(null)
@@ -136,49 +138,4 @@ class PlayerService : Service() {
         stopSelf()
         super.onDestroy()
     }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent != null) {
-            val action = intent.action
-            when (action) {
-                ACTION_PLAY -> playOrPause()
-                ACTION_NEXT -> skipNext()
-                ACTION_PREVIOUS -> skipPrevious()
-            }
-        }
-        return START_STICKY
-    }
-
-    private fun playOrPause() {
-        if (player.isPlaying) {
-            player.pause()
-            notificationManager.setPlayer(player)
-            // Update notification to show play button
-        } else {
-            player.play()
-            notificationManager.setPlayer(player)
-            // Update notification to show pause button
-        }
-    }
-
-    private fun skipNext() {
-        if (player.hasNextMediaItem()) {
-            player.seekToNext()
-        }
-    }
-
-    private fun skipPrevious() {
-        if (player.hasPreviousMediaItem()) {
-            player.seekToPrevious()
-        }
-    }
-
-    // Define action constants (add more as needed)
-    companion object {
-        const val ACTION_PLAY = "ai.bale.musicplayer.action.PLAY"
-        const val ACTION_NEXT = "ai.bale.musicplayer.action.NEXT"
-        const val ACTION_PREVIOUS = "ai.bale.musicplayer.action.PREVIOUS"
-        // Define other actions here
-    }
-
 }
