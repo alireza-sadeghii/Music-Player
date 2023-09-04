@@ -5,12 +5,13 @@ import ai.bale.musicplayer.databinding.ListItemBinding
 import ai.bale.musicplayer.models.Music
 import ai.bale.musicplayer.services.PlayerProvider
 import ai.bale.musicplayer.services.PlayerService
-import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
-import android.os.IBinder
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.LayerDrawable
+import android.graphics.drawable.ShapeDrawable
+import android.graphics.drawable.shapes.RectShape
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.exoplayer2.ExoPlayer
@@ -41,6 +42,13 @@ class PlayListViewHolder(private val binding: ListItemBinding, private val music
 
         binding.root.setOnClickListener {
             try {
+                binding.root.context.startService(
+                    Intent(
+                        binding.root.context.applicationContext,
+                        PlayerService::class.java
+                    )
+                )
+
                 binding.root.context.startService(
                     Intent(
                         binding.root.context.applicationContext,
