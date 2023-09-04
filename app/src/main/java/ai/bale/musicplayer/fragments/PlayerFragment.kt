@@ -8,6 +8,11 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.LayerDrawable
+import android.graphics.drawable.ShapeDrawable
+import android.graphics.drawable.shapes.RectShape
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
@@ -56,6 +61,10 @@ class PlayerFragment : Fragment() {
                 binding.playerMusicCover.setImageURI(mediaItem.mediaMetadata.artworkUri)
                 if (binding.playerMusicCover.drawable == null) {
                     binding.playerMusicCover.setImageResource(R.drawable.cover_music)
+                    ContextCompat.getDrawable(binding.root.context, R.drawable.cover_music)
+                        ?.let { updateBackgroundDrawable(it) }
+                }else{
+                    mediaItem.mediaMetadata.artworkUri?.let { updateBackgroundUri(it) }
                 }
 
                 binding.playerPlayButton.setImageResource(R.drawable.pause_icon)
@@ -79,6 +88,10 @@ class PlayerFragment : Fragment() {
                     binding.playerMusicCover.setImageURI(currentMedia.mediaMetadata.artworkUri)
                     if (binding.playerMusicCover.drawable == null) {
                         binding.playerMusicCover.setImageResource(R.drawable.cover_music)
+                        ContextCompat.getDrawable(binding.root.context, R.drawable.cover_music)
+                            ?.let { updateBackgroundDrawable(it) }
+                    }else{
+                        currentMedia.mediaMetadata.artworkUri?.let { updateBackgroundUri(it) }
                     }
 
 
@@ -110,6 +123,26 @@ class PlayerFragment : Fragment() {
             }
             updateMediaProgress()
         }, 1000)
+    }
+
+    private fun updateBackgroundUri(uri: Uri){
+        val inputStream = binding.root.context.contentResolver.openInputStream(uri)
+        val imageDrawable = Drawable.createFromStream(inputStream, uri.toString())
+        val semiTransparentShape = ShapeDrawable(RectShape())
+        semiTransparentShape.paint.color = 0xBA000000.toInt()
+
+        val layers = arrayOf(imageDrawable, semiTransparentShape)
+        val layerDrawable = LayerDrawable(layers)
+        binding.playerMainFrameLayout.background = layerDrawable
+    }
+
+    private fun updateBackgroundDrawable(drawable: Drawable) {
+        val semiTransparentShape = ShapeDrawable(RectShape())
+        semiTransparentShape.paint.color = 0xBA000000.toInt()
+
+        val layers = arrayOf(drawable, semiTransparentShape)
+        val layerDrawable = LayerDrawable(layers)
+        binding.playerMainFrameLayout.background = layerDrawable
     }
 
     private fun skipNext(){
