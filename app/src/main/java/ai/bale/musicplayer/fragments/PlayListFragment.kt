@@ -25,6 +25,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.findNavController
@@ -113,22 +115,24 @@ class PlayListFragment : Fragment() {
         binding.pointerTitle.text = currentMedia.mediaMetadata.title
     }
 
-    private fun updateMiniButtons(){
-        if (player.isPlaying){
+    private fun updateMiniButtons() {
+        if (player.isPlaying) {
             val newDrawable = resources.getDrawable(R.drawable.pause_icon)
-            binding.pointerPlayButton.setCompoundDrawablesWithIntrinsicBounds(newDrawable, null, null, null)
-        }else{
+            binding.pointerPlayButton.setCompoundDrawablesWithIntrinsicBounds(
+                newDrawable,
+                null,
+                null,
+                null
+            )
+        } else {
             val newDrawable = resources.getDrawable(R.drawable.play_icon)
-            binding.pointerPlayButton.setCompoundDrawablesWithIntrinsicBounds(newDrawable, null, null, null)
+            binding.pointerPlayButton.setCompoundDrawablesWithIntrinsicBounds(
+                newDrawable,
+                null,
+                null,
+                null
+            )
         }
-    }
-
-    private fun getPlayerMedia(): List<MediaItem> {
-        val mediaItems = mutableListOf<MediaItem>()
-
-        player.currentMediaItem?.let { mediaItems.add(it) }
-
-        return mediaItems
     }
 
     private fun fetchSongs() {
@@ -188,42 +192,46 @@ class PlayListFragment : Fragment() {
         }
     }
 
-    private fun permRequest() {
-        if (ContextCompat.checkSelfPermission(
-                requireContext(),
-                permission
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
+    private fun getLocalMusics() {
+        /*if (hasReadStoragePermission()) {
             fetchSongs()
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-
-            AlertDialog.Builder(context)
-                .setTitle("Requesting Music Permission")
-                .setMessage("Allow Program to fetch songs on your device")
-                .setPositiveButton("allow") { _, _ -> storagePerm.launch(permission) }
-                .setNegativeButton("Cancel") { d, _ ->
-                    Toast.makeText(context, "Permission denied by user", Toast.LENGTH_SHORT)
-                        .show()
-                    d.dismiss()
-                }
-                .show()
-
         } else {
-            Toast.makeText(context, "You canceled to show songs", Toast.LENGTH_SHORT).show()
-        }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                requestStoragePermission()
+            } else {
+                fetchSongs()
+            }
+        }*/
+
+        fetchSongs()
     }
 
-    private fun getLocalMusics() {
-        /*storagePerm = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+    private fun hasReadStoragePermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            requireContext(),
+            permission
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestStoragePermission() {
+        storagePerm = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
                 fetchSongs()
             } else {
-                permRequest()
+                showPermissionDeniedMessage()
             }
         }
-        storagePerm.launch(permission)*/
-        fetchSongs()
+        storagePerm.launch(permission)
     }
+
+    private fun showPermissionDeniedMessage() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Permission Denied")
+            .setMessage("You have denied the permission to access music. Some features may not work.")
+            .setPositiveButton("OK") { d, _ -> d.dismiss() }
+            .show()
+    }
+
 
     override fun onDestroy() {
         super.onDestroy()

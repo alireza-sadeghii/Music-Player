@@ -18,6 +18,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.text.TextUtils
+import android.text.format.DateUtils
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -30,6 +31,7 @@ import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import java.lang.Exception
+import kotlin.math.roundToInt
 
 class PlayerFragment : Fragment() {
     private lateinit var binding: PlayerFragmentBinding
@@ -43,11 +45,11 @@ class PlayerFragment : Fragment() {
         binding = PlayerFragmentBinding.inflate(layoutInflater)
         return binding.root
     }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         player = PlayerProvider.Player
         setPlayerControls()
+
     }
 
     private fun setPlayerControls() {
@@ -60,6 +62,8 @@ class PlayerFragment : Fragment() {
                 binding.playerProgressBar.progress = player.currentPosition.toInt()
                 binding.playerProgressBar.max = player.duration.toInt()
                 binding.playerMusicSinger.text = mediaItem.mediaMetadata.albumArtist
+
+                updateTimePointer()
 
                 binding.playerMusicCover.setImageURI(mediaItem.mediaMetadata.artworkUri)
                 if (binding.playerMusicCover.drawable == null) {
@@ -88,6 +92,8 @@ class PlayerFragment : Fragment() {
                     binding.playerMusicSinger.text = currentMedia.mediaMetadata.artist ?: "Artist"
                     binding.playerPlayButton.setImageResource(R.drawable.pause_icon)
 
+                    updateTimePointer()
+
                     binding.playerMusicCover.setImageURI(currentMedia.mediaMetadata.artworkUri)
                     if (binding.playerMusicCover.drawable == null) {
                         binding.playerMusicCover.setImageResource(R.drawable.cover_music)
@@ -96,7 +102,6 @@ class PlayerFragment : Fragment() {
                     } else {
                         currentMedia.mediaMetadata.artworkUri?.let { updateBackgroundUri(it) }
                     }
-
 
                     updateMediaProgress()
                 } else {
@@ -121,13 +126,16 @@ class PlayerFragment : Fragment() {
         updateForMiniPlayer()
     }
 
-    private fun updateForMiniPlayer(){
+    private fun updateForMiniPlayer() {
         val currentMedia = player.currentMediaItem ?: return
         binding.playerMusicTitle.text = currentMedia.mediaMetadata.title
         binding.playerProgressBar.progress = player.currentPosition.toInt()
         binding.playerProgressBar.max = player.duration.toInt()
         binding.playerMusicSinger.text = currentMedia.mediaMetadata.artist ?: "Artist"
         binding.playerPlayButton.setImageResource(R.drawable.pause_icon)
+
+        updateTimePointer()
+        updateMediaProgress()
 
         binding.playerMusicCover.setImageURI(currentMedia.mediaMetadata.artworkUri)
         if (binding.playerMusicCover.drawable == null) {
@@ -140,15 +148,25 @@ class PlayerFragment : Fragment() {
 
         binding.playerProgressBar.progress = player.currentPosition.toInt()
 
-        if (!player.isPlaying){
+        if (!player.isPlaying) {
             binding.playerPlayButton.setImageResource(R.drawable.play_icon)
         }
+    }
+
+    private fun updateTimePointer() {
+        binding.playerMusicCurrentTime.text = calculateDuration(player.currentPosition)
+        binding.playerMusicFullTime.text = calculateDuration(player.duration)
+    }
+
+    private fun calculateDuration(duration: Long): String {
+        return DateUtils.formatElapsedTime(duration / 1000)
     }
 
     private fun updateMediaProgress() {
         val handler = Handler().postDelayed({
             if (player.isPlaying) {
                 binding.playerProgressBar.progress = player.currentPosition.toInt()
+                updateTimePointer()
             }
             updateMediaProgress()
         }, 1000)
