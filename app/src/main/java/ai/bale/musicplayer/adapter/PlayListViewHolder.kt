@@ -10,6 +10,7 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.LayerDrawable
 import android.graphics.drawable.ShapeDrawable
 import android.graphics.drawable.shapes.RectShape
+import android.text.format.DateUtils
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.navigation.findNavController
@@ -28,7 +29,7 @@ class PlayListViewHolder(private val binding: ListItemBinding, private val music
         player = PlayerProvider.Player
         binding.musicTitle.text = music.title
         binding.musicSinger.text = music.singer
-        binding.musicDuration.text = calculateDuration(music.duration.toInt())
+        binding.musicDuration.text = calculateDuration(music.duration.toLong())
 
         try {
             binding.musicCoverImage.setImageURI(music.coverUri)
@@ -95,10 +96,7 @@ class PlayListViewHolder(private val binding: ListItemBinding, private val music
             .build()
     }
 
-    private fun calculateDuration(duration: Int): String {
-        var seconds = (duration / 1000F).roundToInt()
-        val minutes = (seconds / 60F).roundToInt()
-        seconds %= 60
-        return String.format("%02d:%02d", minutes, seconds)
+    private fun calculateDuration(duration: Long): String {
+        return DateUtils.formatElapsedTime(duration / 1000)
     }
 }
