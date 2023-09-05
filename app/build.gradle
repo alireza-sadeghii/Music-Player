@@ -4,6 +4,11 @@ plugins {
 }
 
 android {
+
+    defaultConfig {
+        multiDexEnabled true
+    }
+
     namespace 'ai.bale.musicplayer'
     compileSdk 34
 
@@ -20,7 +25,7 @@ android {
     viewBinding {
         enabled = true
     }
-    dataBinding{
+    dataBinding {
         enabled = true
     }
 
@@ -60,4 +65,7 @@ dependencies {
     //Navigation
     implementation "androidx.navigation:navigation-fragment-ktx:2.7.1"
     implementation "androidx.navigation:navigation-ui-ktx:2.7.1"
+
+    //multidex
+    implementation 'androidx.multidex:multidex:2.0.1'
 }
